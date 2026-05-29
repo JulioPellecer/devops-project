@@ -1,0 +1,54 @@
+name: CI/CD Pipeline - DevOps Project
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Clonar repositorio
+      uses: actions/checkout@v3
+
+    - name: Login a Docker Hub
+      uses: docker/login-action@v2
+      with:
+        username: ${{ secrets.DOCKER_USERNAME }}
+        password: ${{ secrets.DOCKER_PASSWORD }}
+
+    - name: Construir imagen Docker
+      run: |
+        docker build -t ${{ secrets.DOCKER_USERNAME }}/devops-project:latest .
+        docker build -t ${{ secrets.DOCKER_USERNAME }}/devops-project:${{ github.sha }} .
+
+    - name: Prueba basica de la imagen
+      run: |
+        docker run -d --name test-app -p 5000:5000 \
+          -e ENVIRONMENT=test \
+          ${{ secrets.DOCKER_USERNAME }}/devops-project:latest
+        sleep 5
+        docker exec test-app curl -f http://localhost:5000/health || exit 1
+        docker stop test-app
+        docker rm test-app
+        echo "✅ Prueba exitosa"
+
+    - name: Publicar imagen en Docker Hub
+      run: |
+        docker push ${{ secrets.DOCKER_USERNAME }}/devops-project:latest
+        docker push ${{ secrets.DOCKER_USERNAME }}/devops-project:${{ github.sha }}
+
+    - name: Desplegar en AWS EC2
+      uses: appleboy/ssh-action@v0.1.10
+      with:
+        host: ${{ secrets.EC2_HOST }}
+        username: ${{ secrets.EC2_USER }}
+        key: ${{ secrets.EC2_SSH_KEY }}
+        script: |
+          cd ~/devops-project
+          git pull origin main
+          sudo docker-compose pull
+          sudo docker-compose up --build -d
+          sudo docker system prune -f
+          echo "✅ Deploy completado en AWS"
