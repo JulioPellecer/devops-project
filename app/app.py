@@ -19,7 +19,7 @@ HTML_PAGE = """
     </style>
 </head>
 <body>
-    <h1>🚀 DevOps Project - Versión Demo en Vivo!</h1>
+    DevOps Project - Pipeline Automatico v3.0!
     <span class="status">✅ App en línea</span>
     <div class="info">
         <p><strong>Hora del servidor:</strong> {{ hora }}</p>
